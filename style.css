@@ -207,6 +207,18 @@ h1 {
 }
 
 /* ── Status ── */
+#btn-new-puzzle {
+  padding: 0.6rem 1.6rem;
+  background: #1a3a5a;
+  border: 1px solid #a8d8ea;
+  border-radius: 6px;
+  color: #a8d8ea;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+#btn-new-puzzle:hover { background: #1f4a70; }
+
 #status {
   font-size: 0.85rem;
   color: #7a9ab8;

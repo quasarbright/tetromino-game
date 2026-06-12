@@ -351,13 +351,17 @@ function renderTray() {
 
 function renderStatus() {
   const el = document.getElementById('status');
+  const newBtn = document.getElementById('btn-new-puzzle');
   if (checkWin()) {
     el.textContent = '🎉 Puzzle solved!';
+    newBtn.style.display = '';
+    return;
   } else if (state.currentPiece) {
     el.textContent = 'Click the grid to place • Z / X to rotate • Esc to deselect';
   } else {
     el.textContent = 'Select a piece from the tray • Click a placed piece to pick it up and move it';
   }
+  newBtn.style.display = 'none';
 }
 
 function render() {
@@ -430,6 +434,13 @@ document.getElementById('btn-solution').addEventListener('click', e => {
   e.stopPropagation();
   state.showingSolution = !state.showingSolution;
   e.target.textContent = state.showingSolution ? 'Hide solution' : 'Show solution';
+  render();
+});
+
+document.getElementById('btn-new-puzzle').addEventListener('click', e => {
+  e.stopPropagation();
+  buildGrid();
+  initGame();
   render();
 });
 
