@@ -174,9 +174,12 @@ h1 {
   border-radius: 2px;
 }
 
-.piece-label {
-  font-size: 0.8rem;
+.piece-count {
+  font-size: 0.85rem;
+  font-weight: 600;
   color: #aaa;
+  min-width: 2ch;
+  text-align: right;
 }
 
 /* ── Status ── */
