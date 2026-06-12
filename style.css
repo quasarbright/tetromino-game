@@ -129,11 +129,16 @@ h1 {
   color: #a8d8ea;
 }
 
-#current-piece {
+#hand {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 60px;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+#key-hint {
+  font-size: 0.75rem;
+  color: #666;
+  text-align: center;
 }
 
 #pieces {

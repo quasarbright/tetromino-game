@@ -18,6 +18,7 @@ const PIECES = [
 
 const ROWS = 8;
 const COLS = 8;
+const HAND_SIZE = 3;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function clonePiece(p) {
@@ -31,9 +32,12 @@ function randomPiece() {
 // ── State ─────────────────────────────────────────────────────────────────────
 const state = {
   grid: Array.from({ length: ROWS }, () => Array(COLS).fill(null)),
-  current: randomPiece(),
+  hand: Array.from({ length: HAND_SIZE }, randomPiece),
+  selectedIndex: 0,
   hover: null,
 };
+
+function selected() { return state.hand[state.selectedIndex]; }
 
 // ── Rotation ──────────────────────────────────────────────────────────────────
 function rotateCells(cells, anchor, dir) {
@@ -47,7 +51,8 @@ function rotateCells(cells, anchor, dir) {
 }
 
 function rotatePiece(dir) {
-  state.current.cells = rotateCells(state.current.cells, state.current.anchor, dir);
+  const piece = selected();
+  piece.cells = rotateCells(piece.cells, piece.anchor, dir);
   render();
 }
 
@@ -67,7 +72,7 @@ function placePiece(piece, hoverRow, hoverCol) {
   getPlacementCells(piece, hoverRow, hoverCol).forEach(([r, c]) => {
     state.grid[r][c] = { pieceId: piece.id, color: piece.color };
   });
-  state.current = randomPiece();
+  state.hand[state.selectedIndex] = randomPiece();
   state.hover = null;
 }
 
@@ -78,13 +83,14 @@ function checkWin() {
 // ── Render ────────────────────────────────────────────────────────────────────
 function renderGrid() {
   const gridEl = document.getElementById('grid');
+  const piece = selected();
 
   const ghostCells = new Map();
   if (state.hover !== null) {
     const { row, col } = state.hover;
-    const valid = isValidPlacement(state.current, row, col);
-    getPlacementCells(state.current, row, col).forEach(([r, c]) => {
-      ghostCells.set(`${r},${c}`, { valid, color: state.current.color });
+    const valid = isValidPlacement(piece, row, col);
+    getPlacementCells(piece, row, col).forEach(([r, c]) => {
+      ghostCells.set(`${r},${c}`, { valid, color: piece.color });
     });
   }
 
@@ -156,10 +162,21 @@ function buildPiecePreview(piece) {
   return preview;
 }
 
-function renderCurrentPiece() {
-  const el = document.getElementById('current-piece');
+function renderHand() {
+  const el = document.getElementById('hand');
   el.innerHTML = '';
-  el.appendChild(buildPiecePreview(state.current));
+  state.hand.forEach((piece, idx) => {
+    const card = document.createElement('div');
+    card.className = 'piece-card';
+    if (idx === state.selectedIndex) card.classList.add('selected');
+    card.appendChild(buildPiecePreview(piece));
+    card.addEventListener('click', () => {
+      state.selectedIndex = idx;
+      state.hover = null;
+      render();
+    });
+    el.appendChild(card);
+  });
 }
 
 function renderStatus() {
@@ -169,7 +186,7 @@ function renderStatus() {
 
 function render() {
   renderGrid();
-  renderCurrentPiece();
+  renderHand();
   renderStatus();
 }
 
@@ -196,8 +213,8 @@ document.getElementById('grid').addEventListener('click', e => {
   if (!cell) return;
   const row = +cell.dataset.row;
   const col = +cell.dataset.col;
-  if (isValidPlacement(state.current, row, col)) {
-    placePiece(state.current, row, col);
+  if (isValidPlacement(selected(), row, col)) {
+    placePiece(selected(), row, col);
     render();
   }
 });
@@ -205,6 +222,9 @@ document.getElementById('grid').addEventListener('click', e => {
 document.addEventListener('keydown', e => {
   if (e.key === 'z' || e.key === 'Z') rotatePiece(-1);
   if (e.key === 'x' || e.key === 'X') rotatePiece(1);
+  if (e.key === '1') { state.selectedIndex = 0; state.hover = null; render(); }
+  if (e.key === '2') { state.selectedIndex = 1; state.hover = null; render(); }
+  if (e.key === '3') { state.selectedIndex = 2; state.hover = null; render(); }
 });
 
 document.getElementById('btn-rotate-ccw').addEventListener('click', () => rotatePiece(-1));
