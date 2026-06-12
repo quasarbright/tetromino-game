@@ -48,9 +48,9 @@ h1 {
   border: 2px solid #444;
   padding: 2px;
   border-radius: 4px;
-  --cell-size: 64px;
-  --cols: 4;
-  --rows: 4;
+  --cell-size: 56px;
+  --cols: 8;
+  --rows: 8;
 }
 
 .cell {
@@ -58,7 +58,6 @@ h1 {
   height: var(--cell-size);
   background: #16213e;
   border-radius: 3px;
-  transition: background 0.08s;
   position: relative;
 }
 
@@ -66,13 +65,22 @@ h1 {
   border-radius: 3px;
 }
 
-.cell.ghost-valid {
-  opacity: 0.65;
+.cell.ghost-valid::after,
+.cell.ghost-invalid::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 3px;
+  pointer-events: none;
+  opacity: 0.75;
 }
 
-.cell.ghost-invalid {
-  background: #7f1d1d !important;
-  opacity: 0.75;
+.cell.ghost-valid::after {
+  background: var(--ghost-color);
+}
+
+.cell.ghost-invalid::after {
+  background: #ef4444;
 }
 
 /* ── Sidebar ── */
@@ -110,10 +118,22 @@ h1 {
   cursor: default;
 }
 
+#piece-tray {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
 #piece-tray h2 {
   font-size: 1rem;
   color: #a8d8ea;
-  margin-bottom: 0.75rem;
+}
+
+#current-piece {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60px;
 }
 
 #pieces {
