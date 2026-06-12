@@ -62,9 +62,6 @@ function initGame() {
   state.hover = null;
   placementCounter = 0;
 
-  // Auto-select the first available type
-  const firstType = Object.keys(counts)[0];
-  selectType(firstType);
 }
 
 function selectType(type) {
@@ -184,7 +181,7 @@ function solutionAsGrid() {
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       const id = state.solution[r * COLS + c];
-      if (!uidMap[id]) uidMap[id] = next++;
+      if (!(id in uidMap)) uidMap[id] = next++;
       g[r][c] = { uid: uidMap[id], color: pieceType(id) };
     }
   }

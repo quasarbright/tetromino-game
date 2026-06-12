@@ -19,16 +19,14 @@
     #info { color: #888; font-size: 0.9rem; }
     #grid {
       display: grid;
-      gap: 2px;
+      gap: 0;
       background: #0f0f1a;
       border: 2px solid #444;
-      padding: 2px;
       border-radius: 4px;
     }
     .cell {
       width: 56px;
       height: 56px;
-      border-radius: 3px;
       background: #16213e;
     }
     button {
@@ -47,7 +45,7 @@
     .color-S { background: #2ecc71; }
     .color-Z { background: #e74c3c; }
     .color-L { background: #e67e22; }
-    .color-J { background: #3498db; }
+    .color-J { background: #1a6fd4; }
   </style>
 </head>
 <body>
@@ -60,10 +58,14 @@
     import { solve, pieceType } from './solver.mjs';
 
     const ROWS = 8, COLS = 8;
+    const SEP = '#1e2d45';
+    const COLORS = {
+      I: '#00b4d8', O: '#f4d03f', T: '#9b59b6',
+      S: '#2ecc71', Z: '#e74c3c', L: '#e67e22', J: '#1a6fd4',
+    };
 
     function generate() {
       document.getElementById('info').textContent = 'generating…';
-      // yield to the browser to update the DOM before blocking on the solver
       setTimeout(() => {
         const start = performance.now();
         const grid = solve(ROWS, COLS);
@@ -80,10 +82,24 @@
       el.style.gridTemplateRows    = `repeat(${ROWS}, 56px)`;
       el.innerHTML = '';
       if (!grid) return;
-      for (const id of grid) {
-        const cell = document.createElement('div');
-        cell.className = `cell color-${pieceType(id)}`;
-        el.appendChild(cell);
+
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const id = grid[r * COLS + c];
+          const type = pieceType(id);
+          const cell = document.createElement('div');
+          cell.className = `cell color-${type}`;
+
+          const rightId  = c < COLS - 1 ? grid[r * COLS + c + 1] : null;
+          const bottomId = r < ROWS - 1 ? grid[(r + 1) * COLS + c] : null;
+          const sameRight  = rightId  && id === rightId;
+          const sameBottom = bottomId && id === bottomId;
+
+          cell.style.borderRight  = c === COLS - 1 ? 'none' : `1px solid ${sameRight  ? COLORS[type] : SEP}`;
+          cell.style.borderBottom = r === ROWS - 1 ? 'none' : `1px solid ${sameBottom ? COLORS[type] : SEP}`;
+
+          el.appendChild(cell);
+        }
       }
     }
 
