@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Solver Demo</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #1a1a2e;
+      color: #e0e0e0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+      padding: 2rem;
+    }
+    h1 { color: #a8d8ea; font-size: 1.6rem; }
+    #info { color: #888; font-size: 0.9rem; }
+    #grid {
+      display: grid;
+      gap: 2px;
+      background: #0f0f1a;
+      border: 2px solid #444;
+      padding: 2px;
+      border-radius: 4px;
+    }
+    .cell {
+      width: 56px;
+      height: 56px;
+      border-radius: 3px;
+      background: #16213e;
+    }
+    button {
+      padding: 0.6rem 1.4rem;
+      background: #2a2a4a;
+      border: 1px solid #555;
+      border-radius: 6px;
+      color: #ccc;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+    button:hover { background: #3a3a6a; }
+    .color-I { background: #00b4d8; }
+    .color-O { background: #f4d03f; }
+    .color-T { background: #9b59b6; }
+    .color-S { background: #2ecc71; }
+    .color-Z { background: #e74c3c; }
+    .color-L { background: #e67e22; }
+    .color-J { background: #3498db; }
+  </style>
+</head>
+<body>
+  <h1>Solver Demo — 8×8</h1>
+  <div id="info">generating…</div>
+  <div id="grid"></div>
+  <button id="btn">Regenerate</button>
+
+  <script type="module">
+    import { solve, pieceType } from './solver.mjs';
+
+    const ROWS = 8, COLS = 8;
+
+    function generate() {
+      document.getElementById('info').textContent = 'generating…';
+      // yield to the browser to update the DOM before blocking on the solver
+      setTimeout(() => {
+        const start = performance.now();
+        const grid = solve(ROWS, COLS);
+        const ms = (performance.now() - start).toFixed(1);
+        document.getElementById('info').textContent =
+          grid ? `Solved in ${ms}ms` : 'No solution found';
+        render(grid);
+      }, 0);
+    }
+
+    function render(grid) {
+      const el = document.getElementById('grid');
+      el.style.gridTemplateColumns = `repeat(${COLS}, 56px)`;
+      el.style.gridTemplateRows    = `repeat(${ROWS}, 56px)`;
+      el.innerHTML = '';
+      if (!grid) return;
+      for (const id of grid) {
+        const cell = document.createElement('div');
+        cell.className = `cell color-${pieceType(id)}`;
+        el.appendChild(cell);
+      }
+    }
+
+    document.getElementById('btn').addEventListener('click', generate);
+    generate();
+  </script>
+</body>
+</html>
