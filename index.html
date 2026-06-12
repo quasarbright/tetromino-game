@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Polyomino Puzzle</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <h1>Polyomino Puzzle</h1>
+    <div id="main">
+      <div id="grid-section">
+        <div id="grid"></div>
+      </div>
+      <div id="sidebar">
+        <div id="controls">
+          <button id="btn-rotate-ccw" title="Rotate CCW (Z)">↺ Z</button>
+          <button id="btn-rotate-cw" title="Rotate CW (X)">↻ X</button>
+          <button id="btn-deselect" title="Deselect (Esc)">✕ Esc</button>
+        </div>
+        <div id="piece-tray">
+          <h2>Pieces</h2>
+          <div id="pieces"></div>
+        </div>
+      </div>
+    </div>
+    <div id="status"></div>
+  </div>
+  <script src="game.js"></script>
+</body>
+</html>

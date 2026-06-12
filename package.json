@@ -1,0 +1,7 @@
+{
+  "name": "tetromino-game",
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "npx live-server --port=3000 --open=index.html"
+  }
+}
