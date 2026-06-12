@@ -1,12 +1,13 @@
 // ── Piece definitions (cells as [row, col] offsets from origin) ──────────────
+// anchor: the piece-local [row, col] that stays under the cursor during placement/rotation
 const PIECES = [
-  { id: 'I', color: 'I', cells: [[0,0],[0,1],[0,2],[0,3]] },
-  { id: 'O', color: 'O', cells: [[0,0],[0,1],[1,0],[1,1]] },
-  { id: 'T', color: 'T', cells: [[0,1],[1,0],[1,1],[1,2]] },
-  { id: 'S', color: 'S', cells: [[0,1],[0,2],[1,0],[1,1]] },
-  { id: 'Z', color: 'Z', cells: [[0,0],[0,1],[1,1],[1,2]] },
-  { id: 'L', color: 'L', cells: [[0,0],[1,0],[2,0],[2,1]] },
-  { id: 'J', color: 'J', cells: [[0,1],[1,1],[2,0],[2,1]] },
+  { id: 'I', color: 'I', anchor: [0,1], cells: [[0,0],[0,1],[0,2],[0,3]] },
+  { id: 'O', color: 'O', anchor: [0,0], cells: [[0,0],[0,1],[1,0],[1,1]] },
+  { id: 'T', color: 'T', anchor: [1,1], cells: [[0,1],[1,0],[1,1],[1,2]] },
+  { id: 'S', color: 'S', anchor: [1,1], cells: [[0,1],[0,2],[1,0],[1,1]] },
+  { id: 'Z', color: 'Z', anchor: [0,1], cells: [[0,0],[0,1],[1,1],[1,2]] },
+  { id: 'L', color: 'L', anchor: [2,0], cells: [[0,0],[1,0],[2,0],[2,1]] },
+  { id: 'J', color: 'J', anchor: [2,1], cells: [[0,1],[1,1],[2,0],[2,1]] },
 ];
 
 const ROWS = 4;
@@ -15,29 +16,33 @@ const COLS = 4;
 // ── State ─────────────────────────────────────────────────────────────────────
 const state = {
   grid: Array.from({ length: ROWS }, () => Array(COLS).fill(null)),
-  pieces: PIECES.map(p => ({ ...p, cells: p.cells.map(c => [...c]), rotation: 0, used: false })),
+  pieces: PIECES.map(p => ({ ...p, anchor: [...p.anchor], cells: p.cells.map(c => [...c]), rotation: 0, used: false })),
   selected: null,
   hover: null,
 };
 
 // ── Rotation ──────────────────────────────────────────────────────────────────
-function rotateCells(cells, dir) {
-  const rotated = cells.map(([r, c]) => dir === 1 ? [c, -r] : [-c, r]);
-  const minR = Math.min(...rotated.map(([r]) => r));
-  const minC = Math.min(...rotated.map(([, c]) => c));
-  return rotated.map(([r, c]) => [r - minR, c - minC]);
+function rotateCells(cells, anchor, dir) {
+  // Rotate around the anchor cell; CW: [dr,dc]→[dc,-dr], CCW: [dr,dc]→[-dc,dr]
+  const [ar, ac] = anchor;
+  return cells.map(([r, c]) => {
+    const dr = r - ar, dc = c - ac;
+    const [nr, nc] = dir === 1 ? [dc, -dr] : [-dc, dr];
+    return [ar + nr, ac + nc];
+  });
 }
 
 function rotatePiece(dir) {
   if (state.selected === null) return;
   const piece = state.pieces[state.selected];
-  piece.cells = rotateCells(piece.cells, dir);
+  piece.cells = rotateCells(piece.cells, piece.anchor, dir);
   render();
 }
 
 // ── Grid helpers ──────────────────────────────────────────────────────────────
-function getPlacementCells(piece, anchorRow, anchorCol) {
-  return piece.cells.map(([r, c]) => [r + anchorRow, c + anchorCol]);
+function getPlacementCells(piece, hoverRow, hoverCol) {
+  const [ar, ac] = piece.anchor;
+  return piece.cells.map(([r, c]) => [r - ar + hoverRow, c - ac + hoverCol]);
 }
 
 function isValidPlacement(piece, anchorRow, anchorCol) {
@@ -123,14 +128,17 @@ function renderPieces() {
     if (piece.used) card.classList.add('used');
     if (idx === state.selected) card.classList.add('selected');
 
-    const maxR = Math.max(...piece.cells.map(([r]) => r));
-    const maxC = Math.max(...piece.cells.map(([, c]) => c));
+    const minR = Math.min(...piece.cells.map(([r]) => r));
+    const minC = Math.min(...piece.cells.map(([, c]) => c));
+    const normCells = piece.cells.map(([r, c]) => [r - minR, c - minC]);
+    const maxR = Math.max(...normCells.map(([r]) => r));
+    const maxC = Math.max(...normCells.map(([, c]) => c));
     const preview = document.createElement('div');
     preview.className = 'piece-preview';
     preview.style.gridTemplateColumns = `repeat(${maxC + 1}, var(--ps))`;
     preview.style.gridTemplateRows = `repeat(${maxR + 1}, var(--ps))`;
 
-    const cellSet = new Set(piece.cells.map(([r, c]) => `${r},${c}`));
+    const cellSet = new Set(normCells.map(([r, c]) => `${r},${c}`));
     for (let r = 0; r <= maxR; r++) {
       for (let c = 0; c <= maxC; c++) {
         const pc = document.createElement('div');
