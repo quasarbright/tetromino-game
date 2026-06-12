@@ -145,7 +145,14 @@ function checkWin() {
 }
 
 // ── Canvas rendering ──────────────────────────────────────────────────────────
-const CELL = 56;
+let CELL = 56;
+
+function computeCellSize() {
+  // Fit the grid into the available viewport, leaving room for sidebar and chrome
+  const availW = window.innerWidth  - 280; // sidebar + gaps
+  const availH = window.innerHeight - 220; // header + mode picker + status + padding
+  CELL = Math.max(48, Math.min(96, Math.floor(Math.min(availW / COLS, availH / ROWS))));
+}
 const GRID_COLOR        = '#0f0f1a';
 const EMPTY_COLOR       = '#16213e';
 const OUTLINE_COLOR     = 'rgba(0,0,0,0.55)';
@@ -274,14 +281,22 @@ function renderGrid() {
 }
 
 function buildGrid() {
+  computeCellSize();
+  document.getElementById('app').style.zoom = (1 + CELL / 56) / 2;
   const canvas = document.getElementById('game-canvas');
-  canvas.width  = COLS * CELL;
-  canvas.height = ROWS * CELL;
+  const dpr = window.devicePixelRatio || 1;
+  const w = COLS * CELL, h = ROWS * CELL;
+  canvas.width  = w * dpr;
+  canvas.height = h * dpr;
+  canvas.style.width  = `${w}px`;
+  canvas.style.height = `${h}px`;
+  canvas.getContext('2d').scale(dpr, dpr);
 
   const gridEl = document.getElementById('grid');
   gridEl.innerHTML = '';
   gridEl.style.setProperty('--rows', ROWS);
   gridEl.style.setProperty('--cols', COLS);
+  gridEl.style.setProperty('--cell-size', `${CELL}px`);
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       const cell = document.createElement('div');
@@ -396,7 +411,7 @@ document.getElementById('grid').addEventListener('click', e => {
 
   if (!state.currentPiece) {
     const placed = state.grid[row]?.[col];
-    if (placed) { pickUpPiece(placed.uid); render(); }
+    if (placed) { pickUpPiece(placed.uid); state.hover = { row, col }; render(); }
     return;
   }
 
@@ -475,6 +490,8 @@ document.querySelectorAll('.mode-btn').forEach(btn => {
     render();
   });
 });
+
+window.addEventListener('resize', () => { buildGrid(); render(); });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 buildGrid();
