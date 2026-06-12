@@ -359,7 +359,7 @@ function renderStatus() {
   } else if (state.currentPiece) {
     el.textContent = 'Click the grid to place • Z / X to rotate • Esc to deselect';
   } else {
-    el.textContent = 'Select a piece from the tray • Click a placed piece to pick it up and move it';
+    el.textContent = 'Select a piece from the tray • Left-click a placed piece to pick it up • Right-click to remove it';
   }
   newBtn.style.display = 'none';
 }
@@ -395,7 +395,6 @@ document.getElementById('grid').addEventListener('click', e => {
   const col = +cell.dataset.col;
 
   if (!state.currentPiece) {
-    // Pickup mode: click a placed piece to pick it up
     const placed = state.grid[row]?.[col];
     if (placed) { pickUpPiece(placed.uid); render(); }
     return;
@@ -405,6 +404,26 @@ document.getElementById('grid').addEventListener('click', e => {
     placePiece(state.currentPiece, row, col);
     render();
   }
+});
+
+document.getElementById('grid').addEventListener('contextmenu', e => {
+  e.preventDefault();
+  if (checkWin()) return;
+  const cell = e.target.closest('.cell');
+  if (!cell) return;
+  const row = +cell.dataset.row;
+  const col = +cell.dataset.col;
+  const placed = state.grid[row]?.[col];
+  if (!placed) return;
+
+  // Remove piece and return to inventory without selecting it
+  const cells = [];
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      if (state.grid[r][c]?.uid === placed.uid) cells.push([r, c]);
+  for (const [r, c] of cells) state.grid[r][c] = null;
+  state.inventory[placed.color]++;
+  render();
 });
 
 document.addEventListener('keydown', e => {
