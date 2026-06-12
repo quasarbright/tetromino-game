@@ -98,9 +98,10 @@ export function solve(rows, cols) {
 
   const grid = new Array(rows * cols).fill(null);
   let counter = 0;
+  const usageCount = Object.fromEntries(PIECE_ROTATIONS.map(p => [p.id, 0]));
 
-  // Shuffle piece and rotation order so different runs produce different tilings
-  const pieces = shuffle(PIECE_ROTATIONS).map(p => ({
+  // Shuffle rotations once; piece order is re-sorted dynamically by usage
+  const pieces = PIECE_ROTATIONS.map(p => ({
     id: p.id,
     rotations: shuffle(p.rotations),
   }));
@@ -114,7 +115,10 @@ export function solve(rows, cols) {
     const tr = (first / cols) | 0;
     const tc = first % cols;
 
-    for (const { id, rotations } of pieces) {
+    // Prefer less-used piece types; break ties randomly
+    const ordered = shuffle(pieces).sort((a, b) => usageCount[a.id] - usageCount[b.id]);
+
+    for (const { id, rotations } of ordered) {
       for (const shape of rotations) {
         // Try placing shape so each of its cells lands on (tr, tc) in turn.
         // Only valid if (tr,tc) is covered and all other cells are in-bounds and empty.
@@ -134,8 +138,10 @@ export function solve(rows, cols) {
 
           const uid = `${id}_${counter++}`;
           for (const i of placed) grid[i] = uid;
+          usageCount[id]++;
           if (backtrack()) return true;
           for (const i of placed) grid[i] = null;
+          usageCount[id]--;
           counter--;
         }
       }
