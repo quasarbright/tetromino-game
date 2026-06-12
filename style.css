@@ -39,15 +39,23 @@ h1 {
   gap: 0.5rem;
 }
 
+#grid-container {
+  position: relative;
+  border: 2px solid #444;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+#game-canvas {
+  display: block;
+}
+
 #grid {
   display: grid;
   grid-template-columns: repeat(var(--cols), var(--cell-size));
   grid-template-rows: repeat(var(--rows), var(--cell-size));
-  gap: 2px;
-  background: #0f0f1a;
-  border: 2px solid #444;
-  padding: 2px;
-  border-radius: 4px;
+  position: absolute;
+  top: 0; left: 0;
   --cell-size: 56px;
   --cols: 8;
   --rows: 8;
@@ -56,32 +64,10 @@ h1 {
 .cell {
   width: var(--cell-size);
   height: var(--cell-size);
-  background: #16213e;
-  border-radius: 3px;
+  background: transparent;
   position: relative;
 }
 
-.cell.occupied {
-  border-radius: 3px;
-}
-
-.cell.ghost-valid::after,
-.cell.ghost-invalid::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 3px;
-  pointer-events: none;
-  opacity: 0.75;
-}
-
-.cell.ghost-valid::after {
-  background: var(--ghost-color);
-}
-
-.cell.ghost-invalid::after {
-  background: #ef4444;
-}
 
 /* ── Sidebar ── */
 #sidebar {
@@ -208,4 +194,4 @@ h1 {
 .color-S { background: #2ecc71; }
 .color-Z { background: #e74c3c; }
 .color-L { background: #e67e22; }
-.color-J { background: #3498db; }
+.color-J { background: #1a6fd4; }

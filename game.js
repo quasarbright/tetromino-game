@@ -1,7 +1,7 @@
 // ── Colors ────────────────────────────────────────────────────────────────────
 const PIECE_COLORS = {
   I: '#00b4d8', O: '#f4d03f', T: '#9b59b6',
-  S: '#2ecc71', Z: '#e74c3c', L: '#e67e22', J: '#3498db',
+  S: '#2ecc71', Z: '#e74c3c', L: '#e67e22', J: '#1a6fd4',
 };
 
 // ── Piece definitions ─────────────────────────────────────────────────────────
@@ -19,6 +19,8 @@ const PIECES = [
 const ROWS = 8;
 const COLS = 8;
 const HAND_SIZE = 3;
+
+let placementCounter = 0;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function clonePiece(p) {
@@ -69,8 +71,9 @@ function isValidPlacement(piece, hoverRow, hoverCol) {
 }
 
 function placePiece(piece, hoverRow, hoverCol) {
+  const uid = placementCounter++;
   getPlacementCells(piece, hoverRow, hoverCol).forEach(([r, c]) => {
-    state.grid[r][c] = { pieceId: piece.id, color: piece.color };
+    state.grid[r][c] = { uid, color: piece.color };
   });
   state.hand[state.selectedIndex] = randomPiece();
   state.hover = null;
@@ -80,44 +83,106 @@ function checkWin() {
   return state.grid.every(row => row.every(cell => cell !== null));
 }
 
-// ── Render ────────────────────────────────────────────────────────────────────
-function renderGrid() {
-  const gridEl = document.getElementById('grid');
-  const piece = selected();
+// ── Canvas rendering ──────────────────────────────────────────────────────────
+const CELL = 56;
+const GRID_COLOR  = '#0f0f1a';
+const EMPTY_COLOR = '#16213e';
+const SEP_COLOR   = '#1e2d45';
+const OUTLINE_COLOR = 'rgba(0,0,0,0.55)';
+const GHOST_INVALID_COLOR = '#ef4444';
 
-  const ghostCells = new Map();
-  if (state.hover !== null) {
-    const { row, col } = state.hover;
-    const valid = isValidPlacement(piece, row, col);
-    getPlacementCells(piece, row, col).forEach(([r, c]) => {
-      ghostCells.set(`${r},${c}`, { valid, color: piece.color });
-    });
+
+function drawPieceOutlines(ctx, cells, color, alpha) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.globalAlpha = alpha;
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'square';
+
+  const cellSet = new Set(cells.map(([r, c]) => `${r},${c}`));
+  const isInPiece = (r, c) => cellSet.has(`${r},${c}`);
+
+  ctx.beginPath();
+  for (const [r, c] of cells) {
+    const x = c * CELL, y = r * CELL;
+    if (!isInPiece(r-1, c)) { ctx.moveTo(x, y);      ctx.lineTo(x+CELL, y); }
+    if (!isInPiece(r+1, c)) { ctx.moveTo(x, y+CELL); ctx.lineTo(x+CELL, y+CELL); }
+    if (!isInPiece(r, c-1)) { ctx.moveTo(x, y);      ctx.lineTo(x, y+CELL); }
+    if (!isInPiece(r, c+1)) { ctx.moveTo(x+CELL, y); ctx.lineTo(x+CELL, y+CELL); }
   }
+  ctx.stroke();
+  ctx.restore();
+}
 
+function renderGrid() {
+  const canvas = document.getElementById('game-canvas');
+  const ctx = canvas.getContext('2d');
+
+  // Background
+  ctx.fillStyle = GRID_COLOR;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Empty cells + grid lines
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
-      const cell = gridEl.children[r * COLS + c];
-      const occupied = state.grid[r][c];
-      const ghost = ghostCells.get(`${r},${c}`);
-
-      cell.className = 'cell';
-      cell.style.removeProperty('--ghost-color');
-      if (occupied) {
-        cell.classList.add('occupied', `color-${occupied.color}`);
-      }
-      if (ghost) {
-        if (ghost.valid) {
-          cell.classList.add('ghost-valid');
-          cell.style.setProperty('--ghost-color', PIECE_COLORS[ghost.color]);
-        } else {
-          cell.classList.add('ghost-invalid');
-        }
-      }
+      ctx.fillStyle = EMPTY_COLOR;
+      ctx.fillRect(c*CELL + 1, r*CELL + 1, CELL - 1, CELL - 1);
     }
+  }
+
+  // Placed pieces — fill entire cell rect (outline drawn on top unifies the shape)
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const cell = state.grid[r][c];
+      if (!cell) continue;
+      ctx.fillStyle = PIECE_COLORS[cell.color];
+      ctx.fillRect(c*CELL, r*CELL, CELL, CELL);
+    }
+  }
+
+  // Placed pieces — outlines (grouped by uid)
+  const drawn = new Set();
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const cell = state.grid[r][c];
+      if (!cell || drawn.has(cell.uid)) continue;
+      drawn.add(cell.uid);
+      // Collect all cells of this piece
+      const cells = [];
+      for (let rr = 0; rr < ROWS; rr++)
+        for (let cc = 0; cc < COLS; cc++)
+          if (state.grid[rr][cc]?.uid === cell.uid) cells.push([rr, cc]);
+      drawPieceOutlines(ctx, cells, OUTLINE_COLOR, 1);
+    }
+  }
+
+  // Ghost
+  if (state.hover !== null) {
+    const piece = selected();
+    const { row, col } = state.hover;
+    const valid = isValidPlacement(piece, row, col);
+    const ghostCells = getPlacementCells(piece, row, col);
+    const ghostColor = valid ? PIECE_COLORS[piece.color] : GHOST_INVALID_COLOR;
+
+    ctx.save();
+    ctx.globalAlpha = 0.55;
+    for (const [r, c] of ghostCells) {
+      if (r < 0 || r >= ROWS || c < 0 || c >= COLS) continue;
+      ctx.fillStyle = ghostColor;
+      ctx.fillRect(c*CELL, r*CELL, CELL, CELL);
+    }
+    ctx.restore();
+
+    const validGhostCells = ghostCells.filter(([r,c]) => r>=0&&r<ROWS&&c>=0&&c<COLS);
+    drawPieceOutlines(ctx, validGhostCells, OUTLINE_COLOR, 0.7);
   }
 }
 
 function buildGrid() {
+  const canvas = document.getElementById('game-canvas');
+  canvas.width  = COLS * CELL;
+  canvas.height = ROWS * CELL;
+
   const gridEl = document.getElementById('grid');
   gridEl.innerHTML = '';
   gridEl.style.setProperty('--rows', ROWS);
