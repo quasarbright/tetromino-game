@@ -18,8 +18,9 @@ const PIECES = {
   J: { id: 'J', color: 'J', anchor: [2,1], cells: [[0,1],[1,1],[2,0],[2,1]] },
 };
 
-const ROWS = 8;
-const COLS = 8;
+const MODES = { easy: [4,4], medium: [6,6], hard: [8,8] };
+let ROWS = 4;
+let COLS = 4;
 
 let placementCounter = 0;
 
@@ -31,15 +32,20 @@ function clonePiece(p) {
 // ── State ─────────────────────────────────────────────────────────────────────
 const state = {
   grid: Array.from({ length: ROWS }, () => Array(COLS).fill(null)),
-  inventory: {},      // piece type -> remaining count
-  selectedType: null, // which piece type is selected ('I', 'T', etc.)
-  currentPiece: null, // mutable piece object for the selected type (holds rotation)
+  inventory: {},
+  selectedType: null,
+  currentPiece: null,
   hover: null,
+  solution: null,     // flat grid from solver, for the solution overlay
+  showingSolution: false,
 };
 
 // ── Game init ─────────────────────────────────────────────────────────────────
 function initGame() {
+  state.showingSolution = false;
+  document.getElementById('btn-solution').textContent = 'Show solution';
   const solution = solve(ROWS, COLS);
+  state.solution = solution;
   // Count unique piece instances (each piece occupies 4 cells, deduplicate by uid)
   const counts = {};
   const seen = new Set();
@@ -51,6 +57,9 @@ function initGame() {
   }
   state.inventory = counts;
   state.grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+  state.selectedType = null;
+  state.currentPiece = null;
+  state.hover = null;
   placementCounter = 0;
 
   // Auto-select the first available type
@@ -167,6 +176,21 @@ function drawPieceOutlines(ctx, cells, color, alpha) {
   ctx.restore();
 }
 
+function solutionAsGrid() {
+  // Convert flat solver output into a 2D grid of {uid, color} for rendering
+  const g = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+  const uidMap = {};
+  let next = 0;
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const id = state.solution[r * COLS + c];
+      if (!uidMap[id]) uidMap[id] = next++;
+      g[r][c] = { uid: uidMap[id], color: pieceType(id) };
+    }
+  }
+  return g;
+}
+
 function renderGrid() {
   const canvas = document.getElementById('game-canvas');
   const ctx = canvas.getContext('2d');
@@ -182,33 +206,38 @@ function renderGrid() {
     }
   }
 
+  const displayGrid = state.showingSolution ? solutionAsGrid() : state.grid;
+
   // Placed pieces — fill
+  ctx.save();
+  if (state.showingSolution) ctx.globalAlpha = 0.75;
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
-      const cell = state.grid[r][c];
+      const cell = displayGrid[r][c];
       if (!cell) continue;
       ctx.fillStyle = PIECE_COLORS[cell.color];
       ctx.fillRect(c*CELL, r*CELL, CELL, CELL);
     }
   }
+  ctx.restore();
 
   // Placed pieces — outlines grouped by uid
   const drawn = new Set();
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
-      const cell = state.grid[r][c];
+      const cell = displayGrid[r][c];
       if (!cell || drawn.has(cell.uid)) continue;
       drawn.add(cell.uid);
       const cells = [];
       for (let rr = 0; rr < ROWS; rr++)
         for (let cc = 0; cc < COLS; cc++)
-          if (state.grid[rr][cc]?.uid === cell.uid) cells.push([rr, cc]);
-      drawPieceOutlines(ctx, cells, OUTLINE_COLOR, 1);
+          if (displayGrid[rr][cc]?.uid === cell.uid) cells.push([rr, cc]);
+      drawPieceOutlines(ctx, cells, OUTLINE_COLOR, state.showingSolution ? 0.6 : 1);
     }
   }
 
   // Highlight hovered placed piece when nothing is selected (pickup mode)
-  if (state.hover !== null && !state.currentPiece) {
+  if (!state.showingSolution && state.hover !== null && !state.currentPiece) {
     const { row, col } = state.hover;
     const hovered = state.grid[row]?.[col];
     if (hovered) {
@@ -226,7 +255,7 @@ function renderGrid() {
   }
 
   // Ghost
-  if (state.hover !== null && state.currentPiece) {
+  if (!state.showingSolution && state.hover !== null && state.currentPiece) {
     const piece = state.currentPiece;
     const { row, col } = state.hover;
     const valid = isValidPlacement(piece, row, col);
@@ -325,7 +354,13 @@ function renderTray() {
 
 function renderStatus() {
   const el = document.getElementById('status');
-  el.textContent = checkWin() ? '🎉 Puzzle solved!' : '';
+  if (checkWin()) {
+    el.textContent = '🎉 Puzzle solved!';
+  } else if (state.currentPiece) {
+    el.textContent = 'Click the grid to place • Z / X to rotate • Esc to deselect';
+  } else {
+    el.textContent = 'Select a piece from the tray • Click a placed piece to pick it up and move it';
+  }
 }
 
 function render() {
@@ -394,6 +429,25 @@ document.addEventListener('click', e => {
 
 document.getElementById('btn-rotate-ccw').addEventListener('click', e => { e.stopPropagation(); rotatePiece(-1); });
 document.getElementById('btn-rotate-cw').addEventListener('click', e => { e.stopPropagation(); rotatePiece(1); });
+document.getElementById('btn-solution').addEventListener('click', e => {
+  e.stopPropagation();
+  state.showingSolution = !state.showingSolution;
+  e.target.textContent = state.showingSolution ? 'Hide solution' : 'Show solution';
+  render();
+});
+
+// ── Mode picker ───────────────────────────────────────────────────────────────
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    [ROWS, COLS] = MODES[btn.dataset.mode];
+    buildGrid();
+    initGame();
+    render();
+  });
+});
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 buildGrid();
